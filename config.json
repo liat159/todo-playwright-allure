@@ -1,0 +1,6 @@
+{
+  "base_url": "https://demo.playwright.dev/todomvc/",
+  "browser": "chrome",
+  "implicit_wait": 5
+}
+

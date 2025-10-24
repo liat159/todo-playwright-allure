@@ -1,0 +1,6 @@
+Browser=Chromium
+Environment=Staging
+BaseURL=https://todomvc.com/examples/react
+Platform=Windows 11
+Tester=Liat
+Project=Todo App Automation
