@@ -4,95 +4,71 @@ from pages.todo_page import TodoPage
 
 
 @pytest.mark.usefixtures("browser")
-@allure.feature("Todo App - Edge Cases")
 class TestTodoAppEdgeCases:
 
-    @allure.story("Complete Non-existent Task")
-    @allure.title("Verify completing a task when list is empty does nothing")
+    @allure.title("Verify empty task cannot be added")
     @allure.severity(allure.severity_level.MINOR)
-    def test_complete_non_existent_task(self, browser, config):
+    def test_empty_task_not_added(self, browser, config):
         page = TodoPage(browser)
         page.load(config["base_url"])
 
-        with allure.step("Attempt to complete task at index 0 when list is empty"):
-            try:
-                page.complete_task(0)
-            except IndexError:
-                pass  # expected
+        with allure.step("Try to add an empty task"):
+            page.add_task("")
 
-        with allure.step("Verify task list is still empty"):
-            tasks = page.get_tasks()
-            assert len(tasks) == 0, "No tasks should exist"
+        tasks = page.get_tasks()
+        with allure.step("Verify no new task was added"):
+            assert all(task.text.strip() != "" for task in tasks)
 
-    @allure.story("Uncomplete Task")
-    @allure.title("Verify a completed task can be marked as incomplete")
+    @allure.title("Verify duplicate tasks are not added")
     @allure.severity(allure.severity_level.NORMAL)
-    def test_uncomplete_task(self, browser, config):
+    def test_duplicate_task_not_added(self, browser, config):
         page = TodoPage(browser)
         page.load(config["base_url"])
 
-        page.add_task("Read book")
-        page.complete_task(0)
+        with allure.step("Add a task first time"):
+            page.add_task("Read a book")
+        with allure.step("Try to add the same task again"):
+            page.add_task("Read a book")
 
-        with allure.step("Mark the same task as incomplete again"):
-            page.uncomplete_task(0)  # נצטרך להוסיף פונקציה למחלקה
+        tasks = page.get_tasks()
+        with allure.step("Verify only one instance of the task exists"):
+            task_texts = [t.text.strip() for t in tasks]
+            assert task_texts.count("Read a book") == 1
 
-        with allure.step("Verify task is back to active state"):
-            # נניח שיש class בשם 'completed' שמוסר כאשר המשימה פעילה שוב
-            tasks = page.get_tasks()
-            assert not any("completed" in t.get_attribute("class") for t in tasks), "Task should be active"
-
-    @allure.story("Clear with Empty List")
-    @allure.title("Verify clearing when list is empty causes no error")
+    @allure.title("Verify long text task can be added")
     @allure.severity(allure.severity_level.MINOR)
-    def test_clear_empty_list(self, browser, config):
+    def test_long_text_task_added(self, browser, config):
         page = TodoPage(browser)
         page.load(config["base_url"])
 
-        with allure.step("Try to clear completed tasks when list is empty"):
-            page.clear_completed()
+        long_text = "This is a very long task description " * 5
+        with allure.step("Add long text task"):
+            page.add_task(long_text)
 
-        with allure.step("Verify still no tasks exist"):
-            tasks = page.get_tasks()
-            assert len(tasks) == 0
+        tasks = page.get_tasks()
+        with allure.step("Verify the long text task was added"):
+            assert any(long_text.strip() in t.text for t in tasks)
 
-    @allure.story("Clear When No Completed Tasks")
-    @allure.title("Verify clear completed does not remove active tasks")
+    @allure.title("Verify combination of empty, duplicate, and long text")
     @allure.severity(allure.severity_level.NORMAL)
-    def test_clear_no_completed_tasks(self, browser, config):
+    def test_combined_edge_cases(self, browser, config):
         page = TodoPage(browser)
         page.load(config["base_url"])
 
-        page.add_task("Task 1")
-        page.add_task("Task 2")
+        with allure.step("Try adding empty task"):
+            page.add_task("")
 
-        with allure.step("Clear completed tasks (none completed)"):
-            page.clear_completed()
+        long_text = "Another very long task " * 4
+        with allure.step("Add a long text task"):
+            page.add_task(long_text)
 
-        with allure.step("Verify both tasks remain"):
-            tasks = page.get_tasks()
-            assert len(tasks) == 2, "Active tasks should remain untouched"
+        with allure.step("Try adding duplicate of long text task"):
+            page.add_task(long_text)
 
-    @allure.story("Complete And Uncomplete Multiple Tasks")
-    @allure.title("Verify toggling completion state on multiple tasks")
-    @allure.severity(allure.severity_level.CRITICAL)
-    def test_toggle_multiple_tasks(self, browser, config):
-        page = TodoPage(browser)
-        page.load(config["base_url"])
+        tasks = page.get_tasks()
+        task_texts = [t.text.strip() for t in tasks]
 
-        task_names = ["Run", "Walk", "Swim"]
-        for t in task_names:
-            page.add_task(t)
-
-        with allure.step("Complete all tasks"):
-            for i in range(len(task_names)):
-                page.complete_task(i)
-
-        with allure.step("Uncomplete the middle task"):
-            page.uncomplete_task(1)
-
-        with allure.step("Verify the middle task is active, others completed"):
-            tasks = page.get_tasks()
-            classes = [t.get_attribute("class") for t in tasks]
-            assert "completed" not in classes[1], "Middle task should be active"
-            assert all("completed" in c for i, c in enumerate(classes) if i != 1), "Other tasks should remain completed"
+        with allure.step("Verify empty task was not added"):
+            assert all(t != "" for t in task_texts)
+        with allure.step("Verify duplicate task was not added"):
+            assert task_texts.count(long_text.strip()) == 1
